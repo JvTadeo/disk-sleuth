@@ -157,10 +157,10 @@ The saved-scan format changed (version 2): scans saved by earlier versions are d
 
 `npm run dist:win` (run it on Windows) writes two files to `release/`:
 
-- **`analisador-de-disco-<version>-instalador.exe`**: an NSIS installer in Brazilian Portuguese. It installs per
+- **`analisador-de-disco-<version>-installer.exe`**: an NSIS installer in Brazilian Portuguese. It installs per
   user by default (no administrator rights needed), lets you pick the folder, creates Start menu and desktop
   shortcuts, and registers an uninstaller in "Add or remove programs". Uninstalling keeps saved scans and settings.
-- **`analisador-de-disco-<version>-portatil.exe`**: a single .exe that runs without installing. It keeps settings
+- **`analisador-de-disco-<version>-portable.exe`**: a single .exe that runs without installing. It keeps settings
   and saved scans in an `Analisador de Disco - dados` folder next to the .exe (`src/main/portable.ts`); if that
   location is read-only it falls back to `%APPDATA%`. Starting is a little slower because the .exe unpacks itself
   to a temp folder each time.

@@ -74,9 +74,9 @@ followed, and sizes are real "size on disk".
 
 Get the latest build from the [Releases](https://github.com/JvTadeo/disk-sleuth/releases/latest) page:
 
-- **`analisador-de-disco-<version>-instalador.exe`**: installs for your user only (no administrator rights needed)
+- **`analisador-de-disco-<version>-installer.exe`**: installs for your user only (no administrator rights needed)
   and adds Start menu and desktop shortcuts.
-- **`analisador-de-disco-<version>-portatil.exe`**: runs without installing. Settings and saved scans are kept in a
+- **`analisador-de-disco-<version>-portable.exe`**: runs without installing. Settings and saved scans are kept in a
   folder next to the `.exe`, so it works from a USB drive.
 
 The builds are not code-signed, so the first time you run one Windows SmartScreen shows *"Windows protected your

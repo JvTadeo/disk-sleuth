@@ -22,7 +22,7 @@ win:
 
 # Installer: per-user by default (no admin rights needed), Brazilian Portuguese, with a real uninstaller.
 nsis:
-  artifactName: analisador-de-disco-${version}-instalador.${ext}
+  artifactName: analisador-de-disco-${version}-installer.${ext}
   oneClick: false
   perMachine: false
   allowElevation: true
@@ -40,4 +40,4 @@ nsis:
 # Portable: a single .exe that runs without installing. Settings and saved scans live next to it
 # (see src/main/portable.ts).
 portable:
-  artifactName: analisador-de-disco-${version}-portatil.${ext}
+  artifactName: analisador-de-disco-${version}-portable.${ext}
