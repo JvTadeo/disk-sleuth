@@ -1,5 +1,6 @@
 /**
- * Scanner feature tests on real temporary folders: categories, scan comparison, duplicates, cache round-trip.
+ * Scanner feature tests on real temporary folders: categories, scan comparison, duplicates, cache round-trip,
+ * dev junk detection.
  * Run: npm run test:scanner
  */
 import assert from 'node:assert/strict'
@@ -13,6 +14,7 @@ import { scan } from '../src/scanner/scan'
 import { ScanTree } from '../src/scanner/tree'
 import { buildSnapshot, diffTrees, Snapshot } from '../src/scanner/snapshot'
 import { findDuplicates } from '../src/scanner/duplicates'
+import { findDevProjects, gitignoreLists } from '../src/scanner/devjunk'
 
 const MB = 1024 * 1024
 const cat = (k: (typeof CATEGORIES)[number]) => CATEGORIES.indexOf(k)
@@ -91,6 +93,69 @@ try {
   ok(diff.totalDelta > 140 * MB, 'total delta')
 } finally {
   rmSync(root, { recursive: true, force: true })
+}
+
+// ---------- dev junk ----------
+ok(gitignoreLists('node_modules\n/dist\n', 'dist'), '.gitignore: anchored entry at project level')
+ok(gitignoreLists('build/\n', 'build'), '.gitignore: trailing slash')
+ok(!gitignoreLists('/dist\n', 'dist', false), '.gitignore: anchored entry in a parent folder points elsewhere')
+ok(!gitignoreLists('dist\n!dist\n', 'dist'), '.gitignore: negation wins when it comes last')
+ok(!gitignoreLists('src/dist\n', 'dist'), '.gitignore: nested paths are not top-level folders')
+
+const dev = mkdtempSync(join(tmpdir(), 'da-dev-'))
+const put = (rel: string, bytes: number | string) => {
+  const p = join(dev, rel)
+  mkdirSync(join(p, '..'), { recursive: true })
+  writeFileSync(p, typeof bytes === 'number' ? randomBytes(bytes) : bytes)
+}
+// A Node project: node_modules, .next and a gitignored dist are junk; src is not.
+put('web/package.json', '{}')
+put('web/pnpm-lock.yaml', '')
+put('web/.gitignore', 'node_modules\n/dist\n')
+put('web/src/index.ts', 'export {}')
+put('web/node_modules/react/index.js', 2 * MB)
+put('web/node_modules/inner/node_modules/deep/x.js', 1000) // nested node_modules: counted inside the top one
+put('web/.next/cache/a', MB)
+put('web/dist/app.js', MB)
+// dist without a .gitignore entry: kept (some projects commit their dist).
+put('lib/package.json', '{}')
+put('lib/dist/lib.js', 2 * MB)
+put('lib/node_modules/x/i.js', 2 * MB)
+// Rust, .NET and Python projects.
+put('cli/Cargo.toml', '')
+put('cli/target/debug/cli.exe', 3 * MB)
+put('api/Api.csproj', '<Project/>')
+put('api/bin/Debug/api.dll', MB)
+put('api/obj/project.assets.json', MB)
+put('ml/requirements.txt', 'numpy')
+put('ml/.venv/pyvenv.cfg', 'home = C:\\Python')
+put('ml/.venv/Lib/site-packages/numpy/core.pyd', 2 * MB)
+// Look-alikes that must NOT match: a target folder without Cargo.toml, a global node_modules without package.json,
+// a build folder in a plain folder, and a project with almost nothing to free.
+put('docs/target/plan.pdf', 2 * MB)
+put('npm-global/node_modules/typescript/tsc.js', 2 * MB)
+put('photos/build/img.jpg', 2 * MB)
+put('tiny/package.json', '{}')
+put('tiny/node_modules/a.js', 1000)
+
+try {
+  const { tree } = await scan(dev)
+  const projects = await findDevProjects(tree, sep)
+  const by = (name: string) => projects.find((p) => p.name === name)
+  const names = (name: string) => by(name)?.artifacts.map((a) => a.name).sort().join(',')
+  ok(names('web') === '.next,dist,node_modules', `web: node_modules, .next and gitignored dist (got ${names('web')})`)
+  ok(by('web')!.artifacts.find((a) => a.name === 'node_modules')!.rebuild === 'pnpm install', 'lock file picks the package manager')
+  ok(names('lib') === 'node_modules', `lib: dist without .gitignore is kept (got ${names('lib')})`)
+  ok(names('cli') === 'target' && by('cli')!.tools.includes('rust'), 'Rust target')
+  ok(names('api') === 'bin,obj' && by('api')!.artifacts[0].rebuild === 'dotnet build', '.NET bin and obj')
+  ok(names('ml') === '.venv' && by('ml')!.tools.includes('python'), 'Python virtual environment by pyvenv.cfg')
+  ok(!by('docs') && !by('npm-global') && !by('photos'), 'look-alikes are ignored')
+  ok(!by('tiny'), 'projects under 1 MB are left out')
+  ok(projects.every((p) => p.artifacts.every((a) => a.path.startsWith(p.path))), 'artifacts live inside their project')
+  ok(projects.every((p) => typeof p.lastActivity === 'number' && p.lastActivity > Date.now() - 3600_000), 'last activity read from disk')
+  ok(projects[0].alloc >= projects[projects.length - 1].alloc, 'largest projects first')
+} finally {
+  rmSync(dev, { recursive: true, force: true })
 }
 
 console.log(`All ${checks} scanner checks passed`)

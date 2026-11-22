@@ -15,6 +15,8 @@ import type { Program } from '@shared/programs'
 import { ProgramDetector } from './detector'
 import { buildCsv, buildHtml, type ReportData } from './report'
 import { argValue, FLAGS, isAdmin, markHandedOff, relaunchElevated } from './elevation'
+import { DevJunkService } from './devjunk'
+import { StartupManager } from './startup'
 import {
   cacheFile,
   cacheInfo,
@@ -206,6 +208,21 @@ export function restoreCachedScan(): void {
 
 export const detector = new ProgramDetector({
   sizes: async (paths) => (lastSummary && !lastSummary.cancelled ? scanner.query('sizes', { paths }) : null)
+})
+
+const devJunk = new DevJunkService({
+  scanner,
+  currentScan: () => (lastSummary && !lastSummary.cancelled ? { root: lastSummary.root, finishedAt: lastSummary.finishedAt } : null),
+  confirm: (e, options) => confirm(e, options),
+  isProtectedPath: (p) => isProtectedPath(p),
+  afterRemoval: (root) => summaryAfterRemoval(root),
+  pruneDuplicates: (p) => pruneDuplicates(p)
+})
+
+const startup = new StartupManager({
+  isAdmin: () => isAdmin(),
+  // Links entries to installed programs; detects them first when the Programs page was never opened.
+  programs: async () => (detector.result ?? (await detector.detect(await listDrives()))).programs
 })
 
 function requireProgram(id: unknown): Program {
@@ -597,6 +614,37 @@ export function registerIpc(): void {
     iconCache.set(p.iconPath, url)
     return url
   })
+
+  // Dev junk
+  handle('dev:scan', () => {
+    if (scanner.isScanning) throw new Error('Espere a varredura terminar.')
+    return devJunk.scan()
+  })
+  handle('dev:last', () => devJunk.result)
+  handle('dev:clean', (e, request, mode) => devJunk.clean(e, request, mode === 'delete' ? 'delete' : 'trash'))
+  handle('dev:openFolder', (_e, id) => devJunk.openFolder(id))
+
+  // Startup programs
+  handle('startup:list', () => startup.list())
+  handle('startup:last', () => startup.result)
+  handle('startup:setEnabled', (_e, id, enabled) => startup.setEnabled(id, enabled === true))
+  handle('startup:remove', async (e, id) => {
+    const item = startup.result?.items.find((i) => i.id === id)
+    if (!item) throw new Error('Item não encontrado. Atualize a lista.')
+    const ok = await confirm(e, {
+      type: 'question',
+      title: 'Remover entrada órfã',
+      message: `Remover "${item.name}" da inicialização?`,
+      detail:
+        `${item.command}\n\nO arquivo que esta entrada abre não existe mais, então ela não faz nada além de ocupar a lista. ` +
+        (item.source === 'folderUser' || item.source === 'folderCommon'
+          ? 'O atalho vai para a Lixeira.'
+          : 'A entrada é apagada do Windows.'),
+      buttons: ['Remover', 'Cancelar']
+    })
+    return ok ? startup.remove(id) : null
+  })
+  handle('startup:showFile', (_e, id) => startup.showFile(id))
 
   // Duplicates
   handle('dup:start', (_e, minSize) => {

@@ -118,8 +118,8 @@ export class ScannerHost {
     kind: K,
     params: ScannerQueryMap[K][0]
   ): Promise<ScannerQueryMap[K][1] | null> {
-    // "load" starts the process (restoring a saved tree); other queries need a tree to exist.
-    if (!this.proc && kind !== 'load') return Promise.resolve(null)
+    // "load" starts the process (restoring a saved tree) and "folderSize" needs no tree; the rest need a tree.
+    if (!this.proc && kind !== 'load' && kind !== 'folderSize') return Promise.resolve(null)
     const reqId = this.nextReqId++
     return new Promise((resolve) => {
       this.pending.set(reqId, resolve as (r: unknown) => void)

@@ -153,6 +153,55 @@ Both ask for confirmation in a native dialog first, and the window only ever sen
 
 The saved-scan format changed (version 2): scans saved by earlier versions are discarded and need one new scan.
 
+## Developer junk ("Lixo de dev")
+
+- **Detection** (`src/scanner/devjunk.ts`, runs in the scanner process): one walk of the scan tree, no disk reads.
+  For each folder it collects the names of its children and applies the rules: `node_modules`, `.next`, `.nuxt`,
+  `.svelte-kit`, `.turbo`, `.parcel-cache`, `.angular`, `.docusaurus` beside a `package.json`; `target` beside a
+  `Cargo.toml` (Rust) or `pom.xml` (Maven); `bin`/`obj` beside a `.csproj`/`.fsproj`/`.vbproj`; `.gradle`/`build` beside
+  a Gradle build file; `.dart_tool`/`build` beside a `pubspec.yaml`; `Library`/`Temp` in a Unity project; Python tool
+  caches beside a Python manifest; and any folder holding a `pyvenv.cfg` (a virtual environment, whatever its name).
+  Matched folders, `node_modules` and `.git` are never walked into. The lock file picks the package manager shown in
+  the rebuild hint (`pnpm install`, `yarn install`…).
+- **Generic names** (`dist`, `build`, `out`, `.output`, `coverage` in Node projects) only count when the project's
+  `.gitignore`, or a parent folder's (monorepos), lists them: some projects commit their `dist`.
+- **Last activity**: the newest modification time among git's `logs/HEAD` and `index`, the project's top-level entries
+  and one level below (generated folders skipped), capped at a few hundred `stat` calls per project.
+- **Global caches** (`src/main/devjunk.ts`): a fixed list of tool cache folders under `%LOCALAPPDATA%` and
+  `%USERPROFILE%`. Sizes come from the scan tree when the cache lies inside it, otherwise from a quick walk with the scan
+  engine (`folderSize` query, which works without a tree). Cleaning runs the tool's own command (`npm cache clean
+  --force`, `pnpm store prune`, `pip cache purge`, `dotnet nuget locals global-packages --clear`…) and falls back to
+  emptying the folder when there is no command or the tool is not installed. Caches are always cleaned permanently.
+- **Safety**: the window sends node ids and cache ids, and only ids from the last list are accepted. The list is tied
+  to the scan it came from (`scanKey`), so a new scan invalidates it. Project folders go to the Recycle Bin or are
+  deleted permanently after one native confirmation for the whole selection; the scan tree and the totals update
+  without rescanning.
+
+## Startup programs ("Inicialização")
+
+Lives in `src/main/startup/`.
+
+- **Collect** (`collect.ts`): one PowerShell call (`-EncodedCommand`) reads the Run keys (this user; all users, 64 and
+  32-bit) without expanding `%VARIABLES%`, the `StartupApproved` records, both Startup folders (shortcut targets
+  resolved through `WScript.Shell`) and the scheduled tasks with a logon or boot trigger. Microsoft's own tasks
+  (`\Microsoft\…`) are left out. A second call reads version info (publisher, description) and existence for every
+  program file at once; the paths travel as base64 JSON, so nothing needs escaping. Bare names (`ctfmon.exe`) are
+  resolved through PATH first, so they are never mistaken for missing files.
+- **Parse** (`parse.ts`, pure and unit-tested): pulls the program file out of each command (quoted or unquoted paths,
+  `%VARIABLES%`, and the file a launcher such as `rundll32` or `wscript` runs), reads `StartupApproved` and links each
+  entry to the installed program whose folder holds its file (deepest folder wins).
+- **Enable/disable**: exactly what Task Manager does, so both always agree. Run keys and Startup folder entries get a
+  12-byte value under `Explorer\StartupApproved\{Run,Run32,StartupFolder}` (first byte 2 = enabled, 3 = disabled,
+  then the FILETIME of the change), written with `reg.exe` and plain arguments. Tasks use `Enable-ScheduledTask` /
+  `Disable-ScheduledTask`. The entry itself is never touched. All-users entries and tasks need administrator rights;
+  the page offers to reopen the app elevated.
+- **Orphans**: entries whose program file is gone can be removed (registry value deleted, shortcut to the Recycle Bin).
+- **No impact column, on purpose**: Task Manager's rating comes from Windows' measurements in
+  `%SystemRoot%\System32\wdi\LogFiles\StartupInfo`. Checked on a real PC: the folder can only be read with
+  administrator rights, and Windows had stopped updating it more than a year earlier. Showing year-old numbers as
+  current would mislead, so the page leaves impact out.
+- **Debugging**: `DISK_ANALYZER_STARTUP_FIXTURE=<file.json>` shows a saved `StartupResult` instead of reading Windows.
+
 ## Distribution
 
 `npm run dist:win` (run it on Windows) writes two files to `release/`:

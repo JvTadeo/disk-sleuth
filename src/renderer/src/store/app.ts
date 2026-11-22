@@ -2,8 +2,10 @@ import { create } from 'zustand'
 import type { DriveInfo, ThemeSource, ThemeState } from '@shared/ipc'
 import type { ScanNode, ScanProgress, ScanSummary } from '@shared/scan'
 import type { DetectionResult } from '@shared/programs'
+import type { DevJunkResult } from '@shared/devjunk'
+import type { StartupResult } from '@shared/startup'
 
-export type Page = 'overview' | 'disk' | 'programs' | 'settings' | 'scan'
+export type Page = 'overview' | 'disk' | 'programs' | 'startup' | 'dev' | 'settings' | 'scan'
 
 export type ScanStatus = 'idle' | 'scanning' | 'done' | 'cancelled' | 'error'
 
@@ -60,6 +62,18 @@ interface AppState {
   detectPrograms: () => Promise<void>
   /** Removes a program from the list after its folder went to the Recycle Bin. */
   forgetProgram: (id: string) => void
+
+  devJunk: DevJunkResult | null
+  devScanning: boolean
+  devError: string | null
+  scanDevJunk: () => Promise<void>
+  setDevJunk: (result: DevJunkResult | null) => void
+
+  startup: StartupResult | null
+  startupLoading: boolean
+  startupError: string | null
+  loadStartup: () => Promise<void>
+  setStartup: (result: StartupResult) => void
 }
 
 /** Applies the theme to the document. Called before the first render and on every change. */
@@ -207,8 +221,55 @@ export const useApp = create<AppState>((set, get) => ({
   forgetProgram: (id) => {
     const programs = get().programs
     if (programs) set({ programs: { ...programs, programs: programs.programs.filter((p) => p.id !== id) } })
-  }
+  },
+
+  devJunk: null,
+  devScanning: false,
+  devError: null,
+  scanDevJunk: async () => {
+    if (get().devScanning) return
+    set({ devScanning: true, devError: null })
+    try {
+      set({ devJunk: await window.api.dev.scan() })
+    } catch (err) {
+      set({ devError: cleanError(err) })
+    } finally {
+      set({ devScanning: false })
+    }
+  },
+  setDevJunk: (devJunk) => set({ devJunk }),
+
+  startup: null,
+  startupLoading: false,
+  startupError: null,
+  loadStartup: async () => {
+    if (get().startupLoading) return
+    set({ startupLoading: true, startupError: null })
+    try {
+      set({ startup: await window.api.startup.list() })
+    } catch (err) {
+      set({ startupError: cleanError(err) })
+    } finally {
+      set({ startupLoading: false })
+    }
+  },
+  setStartup: (startup) => set({ startup })
 }))
+
+/** Error text without Electron's "Error invoking remote method…" prefix. */
+export function cleanError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err)
+  return msg.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+}
+
+/** Bytes the "Lixo de dev" page can free (projects + caches), or null before the first look. */
+export function useDevJunkTotal(): number | null {
+  return useApp((s) => {
+    const r = s.devJunk
+    if (!r) return null
+    return r.projects.reduce((a, p) => a + p.alloc, 0) + r.caches.reduce((a, c) => a + (c.alloc ?? 0), 0)
+  })
+}
 
 /** Programs that deserve a look: not registered or orphaned (system components excluded). */
 export function useAttentionCount(): number {

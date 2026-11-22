@@ -71,6 +71,19 @@ const api: Api = {
     onDone: (cb) => subscribe('dup:done', cb),
     onError: (cb) => subscribe('dup:error', cb)
   },
+  dev: {
+    scan: () => invoke('dev:scan'),
+    last: () => invoke('dev:last'),
+    clean: (request, mode) => invoke('dev:clean', request, mode),
+    openFolder: (id) => invoke('dev:openFolder', id)
+  },
+  startup: {
+    list: () => invoke('startup:list'),
+    last: () => invoke('startup:last'),
+    setEnabled: (id, enabled) => invoke('startup:setEnabled', id, enabled),
+    remove: (id) => invoke('startup:remove', id),
+    showFile: (id) => invoke('startup:showFile', id)
+  },
   programs: {
     detect: () => invoke('programs:detect'),
     last: () => invoke('programs:last'),

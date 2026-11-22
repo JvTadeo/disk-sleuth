@@ -14,6 +14,8 @@ import type {
   TreemapNode
 } from './scan'
 import type { DetectionResult } from './programs'
+import type { DevCleanRequest, DevCleanResult, DevJunkResult } from './devjunk'
+import type { StartupResult } from './startup'
 
 export type ThemeSource = 'light' | 'dark' | 'system'
 
@@ -125,6 +127,15 @@ export interface InvokeMap {
   'programs:openFolder': [[id: string], void]
   'programs:uninstall': [[id: string], { started: boolean }]
   'programs:remove': [[id: string, mode: RemoveMode], TrashResult]
+  'dev:scan': [[], DevJunkResult]
+  'dev:last': [[], DevJunkResult | null]
+  'dev:clean': [[request: DevCleanRequest, mode: RemoveMode], DevCleanResult]
+  'dev:openFolder': [[id: string], void]
+  'startup:list': [[], StartupResult]
+  'startup:last': [[], StartupResult | null]
+  'startup:setEnabled': [[id: string, enabled: boolean], StartupResult]
+  'startup:remove': [[id: string], StartupResult | null]
+  'startup:showFile': [[id: string], void]
 }
 
 /** Fire-and-forget messages (window → main). */
@@ -230,6 +241,31 @@ export interface Api {
     contextMenu(id: string): Promise<ProgramMenuAction | null>
     /** The program's icon as a data URL, or null. */
     icon(id: string): Promise<string | null>
+  }
+  /** "Lixo de dev": rebuildable project folders and developer tool caches. */
+  dev: {
+    /** Looks for them in the scan on display (projects) and in the usual cache folders. Takes a few seconds. */
+    scan(): Promise<DevJunkResult>
+    last(): Promise<DevJunkResult | null>
+    /**
+     * Confirms in a native dialog, then removes the chosen folders (Recycle Bin or permanently) and cleans the chosen
+     * caches (always permanently, with the tool's own command when it is installed). Only ids from the last list count.
+     */
+    clean(request: DevCleanRequest, mode: RemoveMode): Promise<DevCleanResult>
+    /** Opens a project (by id) or a cache (by id) in Explorer. */
+    openFolder(id: string): Promise<void>
+  }
+  /** Programs that start with Windows. */
+  startup: {
+    /** Reads the Run keys, Startup folders and logon tasks (a few seconds). */
+    list(): Promise<StartupResult>
+    last(): Promise<StartupResult | null>
+    /** Enables or disables an entry the way Task Manager does (the entry stays). */
+    setEnabled(id: string, enabled: boolean): Promise<StartupResult>
+    /** Confirms in a native dialog, then removes an orphaned entry. Null when the user cancelled. */
+    remove(id: string): Promise<StartupResult | null>
+    /** Shows the program file in Explorer. */
+    showFile(id: string): Promise<void>
   }
   app: {
     info(): Promise<AppInfo>

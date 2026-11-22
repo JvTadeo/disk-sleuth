@@ -21,7 +21,7 @@
     "dist:win": "electron-vite build && electron-builder --win",
     "dist:setup": "electron-vite build && electron-builder --win nsis",
     "dist:portable": "electron-vite build && electron-builder --win portable",
-    "test:detector": "rolldown tests/classify.test.ts --platform node --format esm -o out/tests/classify.test.mjs --log-level silent && node out/tests/classify.test.mjs",
+    "test:detector": "rolldown tests/classify.test.ts --platform node --format esm -o out/tests/classify.test.mjs --log-level silent && node out/tests/classify.test.mjs && rolldown tests/startup.test.ts --platform node --format esm -o out/tests/startup.test.mjs --log-level silent && node out/tests/startup.test.mjs",
     "test:report": "rolldown tests/report.test.ts --platform node --format esm -o out/tests/report.test.mjs --log-level silent && node out/tests/report.test.mjs",
     "test:scanner": "rolldown tests/scanner.test.ts --platform node --format esm -o out/tests/scanner.test.mjs --log-level silent && node out/tests/scanner.test.mjs",
     "bench": "electron-vite build --logLevel warn && node out/main/bench.js"

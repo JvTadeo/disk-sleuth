@@ -7,6 +7,8 @@ import { useApp } from '@/store/app'
 // The first page ships in the main bundle; the others load only when opened.
 const Disk = lazy(() => import('@/pages/Disk'))
 const Programs = lazy(() => import('@/pages/Programs'))
+const DevJunk = lazy(() => import('@/pages/DevJunk'))
+const Startup = lazy(() => import('@/pages/Startup'))
 const Settings = lazy(() => import('@/pages/Settings'))
 const Scan = lazy(() => import('@/pages/Scan'))
 
@@ -17,6 +19,10 @@ function CurrentPage() {
       return <Disk />
     case 'programs':
       return <Programs />
+    case 'startup':
+      return <Startup />
+    case 'dev':
+      return <DevJunk />
     case 'settings':
       return <Settings />
     case 'scan':

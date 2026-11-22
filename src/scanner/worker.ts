@@ -14,6 +14,7 @@ import { scan, PATH_SEP } from './scan'
 import { ScanTree } from './tree'
 import { buildSnapshot, diffTrees, Snapshot } from './snapshot'
 import { findDuplicates } from './duplicates'
+import { findDevProjects } from './devjunk'
 
 const port = process.parentPort
 if (!port) throw new Error('scanner must run inside an Electron utilityProcess')
@@ -114,11 +115,22 @@ async function startScan(root: string): Promise<void> {
   }
 }
 
+/** Size of a folder that is not part of the tree (a tool cache on another drive, say). */
+async function folderSize(path: string): Promise<{ alloc: number; files: number } | null> {
+  try {
+    const { summary } = await scan(path, { dirWorkers: 8, statConcurrency: 8 })
+    return { alloc: summary.alloc, files: summary.files }
+  } catch {
+    return null
+  }
+}
+
 async function runQuery(q: ScannerQuery): Promise<unknown> {
   if (q.kind === 'load') return loadTree(q.params.file)
   if (loading) await loading.catch(() => {})
   if (q.kind === 'save') return saveTree(q.params.file, q.params.snapFile)
   if (q.kind === 'diff') return diffWith(q.params.snapFile, q.params.previousTotal)
+  if (q.kind === 'folderSize') return folderSize(q.params.path)
   if (!tree) return null
   switch (q.kind) {
     case 'children':
@@ -135,6 +147,15 @@ async function runQuery(q: ScannerQuery): Promise<unknown> {
       return tree.findPath(q.params.path)
     case 'sizes':
       return tree.sizesOf(q.params.paths)
+    case 'devProjects':
+      return findDevProjects(tree, PATH_SEP)
+    case 'removeChildren': {
+      const ids: number[] = []
+      tree.forEachChild(q.params.nodeId, (c) => ids.push(c))
+      let result = null
+      for (const c of ids) result = tree.remove(c) ?? result
+      return result
+    }
   }
 }
 

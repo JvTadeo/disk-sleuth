@@ -1,7 +1,9 @@
 import {
   type RemixiconComponentType,
   RiApps2Line,
+  RiCodeSSlashLine,
   RiDashboardLine,
+  RiShutDownLine,
   RiFolder3Line,
   RiHardDrive3Line,
   RiSettings3Line,
@@ -11,17 +13,26 @@ import {
 import { UsageBar } from '@/components/ui/usage-bar'
 import { formatBytes } from '@/lib/format'
 import { cn } from '@/lib/utils'
-import { driveLabel, useApp, useAttentionCount, type Page } from '@/store/app'
+import { driveLabel, useApp, useAttentionCount, useDevJunkTotal, type Page } from '@/store/app'
 
 type Icon = RemixiconComponentType
 
 const NAV: { page: Page; label: string; icon: Icon }[] = [
   { page: 'overview', label: 'Visão geral', icon: RiDashboardLine },
   { page: 'disk', label: 'Disco', icon: RiFolder3Line },
-  { page: 'programs', label: 'Programas', icon: RiApps2Line }
+  { page: 'programs', label: 'Programas', icon: RiApps2Line },
+  { page: 'startup', label: 'Inicialização', icon: RiShutDownLine },
+  { page: 'dev', label: 'Lixo de dev', icon: RiCodeSSlashLine }
 ]
 
-function NavItem({ page, label, icon: Icon, badge }: { page: Page; label: string; icon: Icon; badge?: number }) {
+interface NavBadge {
+  text: string
+  /** Read by screen readers instead of the bare text. */
+  label: string
+  tone: 'warn' | 'info' | 'muted'
+}
+
+function NavItem({ page, label, icon: Icon, badge }: { page: Page; label: string; icon: Icon; badge?: NavBadge }) {
   const active = useApp((s) => s.page === page)
   const setPage = useApp((s) => s.setPage)
   return (
@@ -36,12 +47,19 @@ function NavItem({ page, label, icon: Icon, badge }: { page: Page; label: string
     >
       <Icon size={18} aria-hidden />
       {label}
-      {!!badge && (
+      {badge && (
         <span
-          className="ml-auto rounded-full bg-status-warn/15 px-2 py-px text-xs font-medium text-status-warn tabular-nums"
-          aria-label={`${badge} precisam de atenção`}
+          className={cn(
+            'ml-auto rounded-full px-2 py-px text-xs font-medium tabular-nums',
+            badge.tone === 'warn'
+              ? 'bg-status-warn/15 text-status-warn'
+              : badge.tone === 'info'
+                ? 'bg-brand/12 text-brand'
+                : 'bg-muted text-muted-foreground'
+          )}
+          aria-label={badge.label}
         >
-          {badge}
+          {badge.text}
         </span>
       )}
     </button>
@@ -122,8 +140,25 @@ function AdminEntry() {
   )
 }
 
+function badgeFor(page: Page, attention: number, devTotal: number | null, startupOn: number | null): NavBadge | undefined {
+  if (page === 'startup' && startupOn) {
+    return { text: String(startupOn), label: `${startupOn} programas abrem com o Windows`, tone: 'muted' }
+  }
+  if (page === 'programs' && attention > 0) {
+    return { text: String(attention), label: `${attention} precisam de atenção`, tone: 'warn' }
+  }
+  if (page === 'dev' && devTotal !== null && devTotal >= 1024 ** 3) {
+    // Whole gigabytes keep the badge short; under 1 GB it is not worth a badge.
+    const gb = Math.floor(devTotal / 1024 ** 3)
+    return { text: `${gb} GB`, label: `${gb} GB podem ser liberados`, tone: 'info' }
+  }
+  return undefined
+}
+
 export function Sidebar() {
   const attention = useAttentionCount()
+  const devTotal = useDevJunkTotal()
+  const startupOn = useApp((s) => (s.startup ? s.startup.items.filter((i) => i.enabled).length : null))
   return (
     <nav
       aria-label="Navegação principal"
@@ -131,7 +166,7 @@ export function Sidebar() {
     >
       <div className="flex flex-col gap-0.5">
         {NAV.map((n) => (
-          <NavItem key={n.page} {...n} badge={n.page === 'programs' ? attention : undefined} />
+          <NavItem key={n.page} {...n} badge={badgeFor(n.page, attention, devTotal, startupOn)} />
         ))}
       </div>
       <div className="flex flex-col gap-2">

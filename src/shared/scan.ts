@@ -3,6 +3,8 @@
  * Kept free of Node and DOM types so every side can import them.
  */
 
+import type { DevProject } from './devjunk'
+
 export type NodeKind = 'file' | 'dir'
 
 /** One entry as the window sees it: a folder or file with aggregated sizes. */
@@ -176,6 +178,12 @@ export interface ScannerQueryMap {
   diff: [{ snapFile: string; previousTotal?: number }, ScanDiff | null]
   /** Replaces the tree with one saved earlier. Queries sent meanwhile wait for it. */
   load: [{ file: string }, boolean]
+  /** Rebuildable project folders (node_modules, target…) found in the tree. */
+  devProjects: [Record<string, never>, DevProject[]]
+  /** Size of a folder outside the tree (walks it with the scan engine). Works without a tree. */
+  folderSize: [{ path: string }, { alloc: number; files: number } | null]
+  /** Detaches every child of a folder (after it was emptied on disk). */
+  removeChildren: [{ nodeId: number }, RemoveResult | null]
 }
 
 export type ScannerQuery = {

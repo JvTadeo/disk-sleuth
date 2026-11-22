@@ -44,6 +44,21 @@ registry, the Microsoft Store, Start menu shortcuts and program folders to find 
   - **Órfão**: an uninstall entry whose files are gone, or a folder left behind by something you removed
 - Uninstall registered programs, or send unregistered and orphaned folders to the Recycle Bin
 
+**Clean up developer junk**
+- Finds folders a command can rebuild: `node_modules`, `.next`, Rust and Maven `target`, .NET `bin`/`obj`, Python
+  virtual environments, Gradle and Flutter builds, Unity `Library`
+- Shows when each project was last touched, so stale ones stand out ("parados há 8 meses")
+- Measures the global caches of npm, pnpm, Yarn, Bun, pip, uv, NuGet, Gradle, Maven, Cargo, Go and Electron, and cleans
+  them with the tool's own command when it has one
+- Never matches source code: a folder only counts when the file that proves what it is sits next to it, and generic
+  names like `dist` or `build` also need the project's `.gitignore` to list them
+
+**See what starts with Windows**
+- Every program that starts with Windows: the Run registry keys, both Startup folders and logon tasks
+- Enable or disable each one the same way Task Manager does, so both always agree, and nothing gets deleted
+- Links each entry to its installed program, flags Microsoft and security software, and finds orphaned entries whose
+  program is gone
+
 **Clean up safely**
 - Recycle Bin by default; permanent delete only after a stronger confirmation
 - **Empty folder** keeps the folder and removes what is inside
@@ -136,10 +151,16 @@ src/
   renderer/  React UI: pages, components, treemap
 ```
 
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md).
+
 ## Roadmap
 
 - [x] Disk scan, treemap and folder tree
 - [x] Hidden program detection
 - [x] Saved scans, comparison, duplicates, reports, administrator mode
 - [x] Installer and portable build
+- [x] Developer junk cleaner (2.0)
+- [x] Startup programs manager (2.0)
 - [ ] Optional: read the NTFS Master File Table directly for scans in seconds
