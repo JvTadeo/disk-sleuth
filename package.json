@@ -4,6 +4,11 @@
   "version": "1.0.0",
   "private": true,
   "description": "Shows what is using your disk and finds programs that Windows does not list.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/JvTadeo/disk-sleuth.git"
+  },
+  "homepage": "https://github.com/JvTadeo/disk-sleuth",
   "main": "./out/main/index.js",
   "engines": {
     "node": ">=22.12.0"

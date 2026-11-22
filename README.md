@@ -10,7 +10,8 @@
 
 <p align="center">
   <img alt="Platform: Windows 10/11" src="https://img.shields.io/badge/platform-Windows%2010%20%7C%2011-0078d4">
-  <img alt="Version 1.0.0" src="https://img.shields.io/badge/version-1.0.0-18181b">
+  <a href="https://github.com/JvTadeo/disk-sleuth/releases/latest"><img alt="Latest release" src="https://img.shields.io/github/v/release/JvTadeo/disk-sleuth?color=18181b"></a>
+  <a href="https://github.com/JvTadeo/disk-sleuth/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/JvTadeo/disk-sleuth/actions/workflows/ci.yml/badge.svg"></a>
   <img alt="Electron" src="https://img.shields.io/badge/Electron-45-47848f">
   <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-strict-3178c6">
 </p>
@@ -71,7 +72,7 @@ followed, and sizes are real "size on disk".
 
 ## Download
 
-Get the latest build from the [Releases](../../releases) page:
+Get the latest build from the [Releases](https://github.com/JvTadeo/disk-sleuth/releases/latest) page:
 
 - **`analisador-de-disco-<version>-instalador.exe`**: installs for your user only (no administrator rights needed)
   and adds Start menu and desktop shortcuts.
@@ -86,8 +87,8 @@ PC"*. Click **More info**, then **Run anyway**.
 Requirements: Windows 10 or 11 and [Node.js](https://nodejs.org) 22.12 or newer.
 
 ```bash
-git clone <this repository>
-cd <folder>
+git clone https://github.com/JvTadeo/disk-sleuth.git
+cd disk-sleuth
 npm install
 npm run dev
 ```
@@ -102,6 +103,19 @@ npm run dev
 | `npm run test:scanner` | Scanner tests (categories, comparison, duplicates, cache) |
 | `npm run test:report` | Report builder tests |
 | `npm run bench -- C:\` | Benchmarks the scanner on a folder or drive |
+
+### Releasing a new version
+
+Releases are built by GitHub Actions (`.github/workflows/release.yml`). Bump the version and push the tag:
+
+```bash
+npm version patch      # 1.0.0 → 1.0.1 (use minor or major for bigger changes)
+git push --follow-tags
+```
+
+The workflow type-checks, runs the tests, builds the installer and the portable `.exe` on Windows and publishes
+them as a release with generated notes. A run started by hand from the Actions tab builds the files without
+publishing a release.
 
 ## Tech stack
 
