@@ -1,7 +1,7 @@
 {
   "name": "disk-analyzer",
   "productName": "Analisador de Disco",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "description": "Shows what is using your disk and finds programs that Windows does not list.",
   "repository": {
